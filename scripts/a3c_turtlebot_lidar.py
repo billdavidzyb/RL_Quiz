@@ -104,6 +104,24 @@ class A3CAgent:
     # critic -> state is input and value of state is output of network
     # actor and critic network share first hidden layer
     def build_model(self):
+        actor, critic = Sequential()
+        actor.add(Dense(self.network_structure[0], input_shape=(self.input_size,), init='lecun_uniform'))
+        actor.add(LeakyReLU(alpha=0.01))
+
+        for idx in range(1, len(self.network_structure)):
+            layerSize = self.network_structure[idx]
+            actor.add(Dense(layerSize, init="lecun_uniform"))
+            actor.add(LeakyReLU(alpha=0.01))
+        
+        actor.add(LSTM(self.network_structure[-1], dropout_W=0.2, dropout_U=0.2))
+        critic = actor
+
+        actor.add(Dense(self.output_size, init='lecun_uniform'))
+        actor.add(Activation("softmax"))
+
+        critic.add(Dense(1))
+        critic.add(Activation("linear"))
+        '''
         input = Input(shape=(self.input_size,))
         conv = Conv2D(16, (8, 8), strides=(4, 4), activation='relu')(input) # transfer from convolution networks to dense networks
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
@@ -115,7 +133,7 @@ class A3CAgent:
 
         actor = Model(inputs=input, outputs=policy)
         critic = Model(inputs=input, outputs=value)
-
+        '''
         actor._make_predict_function()
         critic._make_predict_function()
 
@@ -197,6 +215,7 @@ class Agent(threading.Thread):
         self.discount_factor = discount_factor
         self.memory = memory.Memory(memorySize)
         self.summary_op, self.summary_placeholders, self.update_ops, self.summary_writer = summary_ops
+        self.network_structure = [300, 300]
 
         self.states, self.actions, self.rewards = [],[],[]
 
@@ -335,18 +354,48 @@ class Agent(threading.Thread):
         self.states, self.actions, self.rewards = [], [], []
 
     def build_localmodel(self):
-        input = Input(shape=(self.input_size,))
-        conv = Conv2D(16, (8, 8), strides=(4, 4), activation='relu')(input)
-        conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
-        conv = Flatten()(conv)
-        fc = Dense(256, activation='relu')(conv)
+        actor, critic = Sequential()
+        actor.add(Dense(self.network_structure[0], input_shape=(self.input_size,), init='lecun_uniform'))
+        actor.add(LeakyReLU(alpha=0.01))
+
+        for idx in range(1, len(self.network_structure)):
+            layerSize = self.network_structure[idx]
+            actor.add(Dense(layerSize, init="lecun_uniform"))
+            actor.add(LeakyReLU(alpha=0.01))
+        
+        actor.add(LSTM(self.network_structure[-1], dropout_W=0.2, dropout_U=0.2))
+        critic = actor
+
+        actor.add(Dense(self.output_size, init='lecun_uniform'))
+        actor.add(Activation("softmax"))
+
+        critic.add(Dense(1))
+        critic.add(Activation("linear"))
+            
+        '''
+        input = Input(shape=(self.input_size,), 
+                      init='lecun_uniform', 
+                      W_regularizer=l2(l=0.01),
+                      bias=True))
+        #conv = Conv2D(16, (8, 8), strides=(4, 4), activation='relu')(input)
+        #conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
+        #conv = Flatten()(conv)
+        lr0 = LeakyReLU(alpha=0.01)(input)
+        
+        fc1 = Dense(self.network_structure[0], init='lecun_uniform')(lr0)
+        lr1 = LeakyReLU(alpha=0.01)(fc1)
+
+        fc2 = Dense(self.network_structure[1], init='lecun_uniform')(lr1)
+        lr2 = LeakyReLU(alpha=0.01)(fc2)
+
+        fc3 = Dense(256, activation='relu')(conv)
         ls = LSTM(256, dropout_W=0.2, dropout_U=0.2)(fc)    # add LSTM cells
         policy = Dense(self.output_size, activation='softmax')(ls)
         value = Dense(1, activation='linear')(ls)
 
         actor = Model(inputs=input, outputs=policy)
         critic = Model(inputs=input, outputs=value)
-
+        '''
         actor._make_predict_function()
         critic._make_predict_function()
 
